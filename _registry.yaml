@@ -1,10 +1,6 @@
 skills:
   core:
-    - coding_standards_skill.md
-    - data_analysis_skill.md
-    - docx_skill.md
-    - pdf_skill.md
-    - pptx_skill.md
+    - writing_good_readme.md
   external:
     anthropic:
       - algorithmic-art

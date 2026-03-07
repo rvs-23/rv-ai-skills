@@ -1,0 +1,45 @@
+skills:
+  core:
+    - coding_standards_skill.md
+    - data_analysis_skill.md
+    - docx_skill.md
+    - pdf_skill.md
+    - pptx_skill.md
+  external:
+    anthropic:
+      - algorithmic-art
+      - canvas-design
+      - claude-api
+      - docx
+      - frontend-design
+      - pdf
+      - pptx
+      - skill-creator
+      - web-artifacts-builder
+      - webapp-testing
+      - xlsx
+    vercel:
+      - react-best-practices
+      - react-native-skills
+      - web-design-guidelines
+    openai:
+      - cloudflare-deploy
+      - develop-web-game
+      - figma
+      - figma-implement-design
+      - imagegen
+      - jupyter-notebook
+      - notion-knowledge-capture
+      - notion-meeting-intelligence
+      - notion-research-documentation
+      - notion-spec-to-implementation
+      - screenshot
+      - security-best-practices
+      - speech
+      - transcribe
+    huggingface:
+      - hugging-face-datasets
+      - hugging-face-jobs
+      - hugging-face-model-trainer
+      - hugging-face-paper-publisher
+      - hugging-face-trackio

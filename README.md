@@ -1,65 +1,59 @@
-# RV AI Skills Repository
+# RV AI Skills Hub
 
-A centralized, platform-agnostic source of truth for AI instructions, coding standards, and procedural workflows.
+This repository is a centralized "portable brain" that stores high-fidelity instructions and procedural workflows for AI agents. It allows you to maintain a single source of truth for your coding standards, data processing rules, and vendor-provided expertise. By using a linked architecture, it ensures that your AI tools—whether Gemini, Claude, or Codex-based terminal agents—always behave with the same level of precision and consistency across different machines.
 
 ---
 
 ## Getting Started
 
-To use this repository on a new machine:
-1. **Clone the Repo**: ```git clone git@github.com:rvs-23/rv-ai-skills.git```
+1. **Clone the Hub**: 'git clone git@github.com:rvs-23/rv-ai-skills.git'
 2. **Run Setup**: 'sh setup.sh' (This populates the hidden .vendor/ directory).
-3. **Link to your agent**: See [Active Synchronization]([https://github.com/rvs-23/rv-ai-skills/edit/main/README.md](https://github.com/rvs-23/rv-ai-skills?tab=readme-ov-file#active-synchronization-cross-platform)) 
+3. **Enable Compatibility**: Follow the instructions in the "Multi-Agent Integration" section below.
 
 ---
 
-## Architecture Overview
+## Multi-Agent Integration
 
-- **/core**: Stable, user-defined skills.
-- **/external**: Third-party skills organized by vendor (e.g., /external/anthropic, /external/vercel, /external/openai, /external/huggingface).
-- **/.vendor**: A hidden directory containing full clones of external repositories. Ignored by git to maintain repo size.
-- **/adapters**: Active "Translation Layer" for exporting core instructions into tool-specific formats.
-- **_registry.yaml**: Machine-readable index for automation.
+Use these commands to make your skills compatible with different terminal-based AI agents. This prevents "instruction drift" by pointing every tool to the same master files.
 
----
+### 1. Gemini CLI
+Gemini discovers skills from directories. Link each vendor folder individually:
+- 'gemini skills link /path/to/rv-ai-skills/external/anthropic'
+- 'gemini skills link /path/to/rv-ai-skills/external/vercel'
+- 'gemini skills link /path/to/rv-ai-skills/external/openai'
+- 'gemini skills link /path/to/rv-ai-skills/external/huggingface'
+- Run '/memory refresh' to re-index.
 
-## Active Synchronization (Cross-Platform)
-
-To ensure your skills run consistently across different AI tools without "Instruction Drift," use the active sync system.
-
-### 1. Synchronizing with Cursor (Codex)
-Cursor uses modular rules in '.cursor/rules/'. To sync a skill:
-'python3 adapters/skill_loader.py external/anthropic/pdf cursor /path/to/your/project'
-*Note: This creates a symlink so that any update to the skill hub is instantly reflected in Cursor.*
-
-### 2. Synchronizing with Claude Code
-Claude Code uses a single 'CLAUDE.md' project context. To sync a skill:
+### 2. Claude Code
+To inject a skill into a specific project's 'CLAUDE.md':
 'python3 adapters/skill_loader.py external/anthropic/git-flow claude /path/to/your/project'
-*Note: This appends the skill logic directly to the project brain.*
 
-### 3. Synchronizing with Gemini CLI
-Gemini CLI discoveres skills from directories containing a SKILL.md. Since this repo is a Hub, link each vendor subdirectory individually:
-1. 'gemini skills link /path/to/rv-ai-skills/external/anthropic'
-2. 'gemini skills link /path/to/rv-ai-skills/external/vercel'
-3. 'gemini skills link /path/to/rv-ai-skills/external/openai'
-4. 'gemini skills link /path/to/rv-ai-skills/external/huggingface'
-5. Run '/memory refresh' in your session to re-index all linked folders.
+### 3. Codex / Terminal Agents
+To make a skill available to Codex-based terminal tools as a rule:
+'python3 adapters/skill_loader.py external/anthropic/pdf codex /path/to/your/project'
 
 ---
 
-## Vendor Management Workflow
+## Adding Skills from External Vendors
 
-### 1. Synchronizing with Vendors
-Update all linked skills at once:
-'cd .vendor/anthropic && git pull'
+You can easily import new expertise from major AI companies by linking them from the .vendor directory.
 
-### 2. Linking a New External Skill
-Create a relative symlink from the vendor source into the vendor-specific external folder:
-'cd external/anthropic && ln -s ../../.vendor/anthropic/skills/[skill-name] [skill-name]'
+### 1. Sync All Vendors
+To pull the latest updates for every integrated vendor (Anthropic, OpenAI, etc.):
+'cd .vendor/anthropic && git pull' (Repeat for other folders in .vendor/)
+
+### 2. Link a Specific Skill
+To add a new skill from a vendor to your active hub:
+1. Find the skill in '.vendor/' (e.g., '.vendor/anthropic/skills/git-flow').
+2. Create a link in the 'external/' folder:
+   'cd external/anthropic && ln -s ../../.vendor/anthropic/skills/git-flow git-flow'
 
 ---
 
-## FAQ: Symlinks and Relative Paths
+## FAQs: Symlinks and Portability
 
-### What is a Symlink and why use it?
-A symbolic link (symlink) is a special file that acts as a shortcut to another file or directory. This repository uses **relative symlinks** (e.g., ../../.vendor/...) instead of absolute paths. This ensures that the hub remains functional even if moved to a different directory or machine, as the internal references stay consistent with the repository's root.
+### What are Symlinks and why use them?
+A symbolic link (symlink) is a "shortcut" to another file. This repo uses **relative symlinks** so that the hub remains functional even if you move it to a different folder or a new machine. The 'setup.sh' script ensures these links always find their targets in the hidden '.vendor/' folder.
+
+### How do I update my own skills?
+Edit the files in the '/core' directory. These are your personal, stable rules. Once edited, they are instantly available to any tool that is linked to this hub.

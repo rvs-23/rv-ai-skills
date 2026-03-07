@@ -29,8 +29,12 @@ Claude Code uses a single 'CLAUDE.md' project context. To sync a skill:
 *Note: This appends the skill logic directly to the project brain.*
 
 ### 3. Synchronizing with Gemini CLI
-Gemini CLI is natively compatible with this structure. Simply link the entire hub:
-'gemini skills link /path/to/rv-ai-skills'
+Gemini CLI discoveres skills from directories containing a SKILL.md. Since this repo is a Hub, link each vendor subdirectory individually:
+1. 'gemini skills link /path/to/rv-ai-skills/external/anthropic'
+2. 'gemini skills link /path/to/rv-ai-skills/external/vercel'
+3. 'gemini skills link /path/to/rv-ai-skills/external/openai'
+4. 'gemini skills link /path/to/rv-ai-skills/external/huggingface'
+5. Run '/memory refresh' in your session to re-index all linked folders.
 
 ---
 
@@ -61,8 +65,8 @@ After adding or updating a skill, run '/memory refresh' in your session to re-in
 
 ## Integration Strategy
 
-| Platform | Interface File | Adapter Template |
-| :--- | :--- | :--- |
-| Gemini CLI | GEMINI.md | adapters/gemini_cli.md |
-| Claude Code | CLAUDE.md | adapters/claude_code.md |
-| Codex / Cursor | .cursorrules | adapters/codex.md |
+| Platform | Interface File | Adapter Template | Link Command |
+| :--- | :--- | :--- | :--- |
+| Gemini CLI | GEMINI.md | adapters/gemini_cli.md | gemini skills link [vendor_path] |
+| Claude Code | CLAUDE.md | adapters/claude_code.md | python3 adapters/skill_loader.py ... |
+| Codex / Cursor | .cursorrules | adapters/codex.md | python3 adapters/skill_loader.py ... |

@@ -4,6 +4,15 @@ A centralized, platform-agnostic source of truth for AI instructions, coding sta
 
 ---
 
+## Getting Started
+
+To use this repository on a new machine:
+1. **Clone the Repo**: 'git clone git@github.com:rvs-23/rv-ai-skills.git'
+2. **Run Setup**: 'sh setup.sh' (This populates the hidden .vendor/ directory).
+3. **Link to Gemini**: Run 'gemini skills link' on each vendor folder in /external (e.g., external/anthropic).
+
+---
+
 ## Architecture Overview
 
 - **/core**: Stable, user-defined skills. These are your fundamental instructions for active development.

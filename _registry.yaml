@@ -1,6 +1,11 @@
 skills:
   core:
-    - writing_good_readme.md
+    - name: writing-good-readme
+      path: core/writing_good_readme.md
+      version: 1.1.0
+      triggers: ["readme", "documentation", "write a README", "project docs"]
+      anti_triggers: ["changelog", "license", "docstring", "technical spec"]
+      tags: [documentation, writing, core]
   external:
     anthropic:
       - algorithmic-art

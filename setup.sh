@@ -19,9 +19,9 @@ sync_repo() {
 
 echo "Starting vendor synchronization..."
 
-sync_repo "git@github.com:anthropics/skills.git" "anthropic"
-sync_repo "git@github.com:huggingface/skills.git" "huggingface"
-sync_repo "git@github.com:vercel-labs/agent-skills.git" "vercel"
-sync_repo "git@github.com:openai/skills.git" "openai"
+sync_repo "https://github.com/anthropics/skills.git" "anthropic"
+sync_repo "https://github.com/huggingface/skills.git" "huggingface"
+sync_repo "https://github.com/vercel-labs/agent-skills.git" "vercel"
+sync_repo "https://github.com/openai/skills.git" "openai"
 
 echo "Done!"

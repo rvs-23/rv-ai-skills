@@ -1,6 +1,10 @@
 ---
 name: core:writing-good-readme
 description: Professional standards for creating icon-free, instruction-led README files with clear information hierarchy.
+version: 1.1.0
+triggers: ["readme", "documentation", "write a README", "project docs"]
+anti_triggers: ["changelog", "license", "docstring", "technical spec"]
+tags: [documentation, writing, core]
 ---
 
 # Writing High-Quality Project Documentation

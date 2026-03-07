@@ -1,7 +1,11 @@
-# OpenAI System Adapter
+# OpenAI System Prompt Adapter
 
-Use this for API-based workflows where you control the system prompt directly.
+To use these skills with OpenAI-based agents (ChatGPT, API, Playground):
 
-1. Keep reusable standards in skill files under `core/`.
-2. Paste only the needed sections into your system message for the current workflow.
-3. Avoid loading entire vendor skills unless required for the task.
+1. Use the `skill_loader.py` with the `openai` target to output a clean system prompt.
+2. Copy the resulting text into the "System Instructions" or "Developer System Message" field.
+
+### Commands
+```bash
+python3 adapters/skill_loader.py core/writing_good_readme.md openai .
+```

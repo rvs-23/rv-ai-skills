@@ -1,10 +1,11 @@
-# Cursor Rules Adapter
+# Cursor (.cursorrules) Adapter
 
-Cursor reads either `.cursorrules` (legacy) or `.cursor/rules/*.mdc` (modular).
+To integrate these skills with Cursor:
 
-1. For modular rules, load a skill as a symlink:
+1. Use the `skill_loader.py` to symlink skills into the `.cursor/rules/` directory as `.mdc` files.
+2. For legacy support, copy instructions directly into the project root's `.cursorrules`.
+
+### Commands
 ```bash
-python3 adapters/skill_loader.py core/writing_good_readme.md cursor /path/to/your/project
+python3 adapters/skill_loader.py core/writing_good_readme.md cursor /path/to/project
 ```
-2. Verify the created file under `.cursor/rules/` points to this repository skill.
-3. Prefer modular rules over a single large `.cursorrules` file.

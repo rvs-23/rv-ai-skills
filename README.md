@@ -6,9 +6,15 @@ This repository is a centralized "portable brain" that stores high-fidelity inst
 
 ## Getting Started
 
-1. **Clone the Hub**: 'git clone git@github.com:rvs-23/rv-ai-skills.git'
-2. **Run Setup**: 'sh setup.sh' (This populates the hidden .vendor/ directory).
-3. **Enable Compatibility**: Follow the instructions in the "Multi-Agent Integration" section below.
+1. Clone the hub:
+```bash
+git clone git@github.com:rvs-23/rv-ai-skills.git
+```
+2. Run setup from the repo root (populates `.vendor/`):
+```bash
+sh setup.sh
+```
+3. Enable agent compatibility using the adapter instructions below.
 
 ---
 
@@ -18,19 +24,34 @@ Use these commands to make your skills compatible with different terminal-based 
 
 ### 1. Gemini CLI
 Gemini discovers skills from directories. Link each vendor folder individually:
-- 'gemini skills link /path/to/rv-ai-skills/external/anthropic'
-- 'gemini skills link /path/to/rv-ai-skills/external/vercel'
-- 'gemini skills link /path/to/rv-ai-skills/external/openai'
-- 'gemini skills link /path/to/rv-ai-skills/external/huggingface'
-- Run '/memory refresh' to re-index.
+
+```bash
+gemini skills link /path/to/rv-ai-skills/external/anthropic
+gemini skills link /path/to/rv-ai-skills/external/vercel
+gemini skills link /path/to/rv-ai-skills/external/openai
+gemini skills link /path/to/rv-ai-skills/external/huggingface
+```
+
+Then run:
+
+```bash
+/memory refresh
+```
 
 ### 2. Claude Code
-To inject a skill into a specific project's 'CLAUDE.md':
-'python3 adapters/skill_loader.py external/anthropic/git-flow claude /path/to/your/project'
+To inject a skill into a specific project's `CLAUDE.md`:
+
+```bash
+python3 adapters/skill_loader.py external/anthropic/pdf/SKILL.md claude /path/to/your/project
+```
 
 ### 3. Codex / Terminal Agents
-To make a skill available to Codex-based terminal tools as a rule:
-'python3 adapters/skill_loader.py external/anthropic/pdf codex /path/to/your/project'
+Codex CLI reads project instructions from `AGENTS.md` in the project root.
+To inject a skill into that file:
+
+```bash
+python3 adapters/skill_loader.py external/anthropic/pdf/SKILL.md codex /path/to/your/project
+```
 
 ---
 
@@ -39,14 +60,21 @@ To make a skill available to Codex-based terminal tools as a rule:
 You can easily import new expertise from major AI companies by linking them from the .vendor directory.
 
 ### 1. Sync All Vendors
-To pull the latest updates for every integrated vendor (Anthropic, OpenAI, etc.):
-'cd .vendor/anthropic && git pull' (Repeat for other folders in .vendor/)
+To pull the latest updates for every integrated vendor (Anthropic, OpenAI, etc.), run:
+
+```bash
+sh setup.sh
+```
 
 ### 2. Link a Specific Skill
 To add a new skill from a vendor to your active hub:
-1. Find the skill in '.vendor/' (e.g., '.vendor/anthropic/skills/git-flow').
-2. Create a link in the 'external/' folder:
-   'cd external/anthropic && ln -s ../../.vendor/anthropic/skills/git-flow git-flow'
+1. Find the skill in `.vendor/` (for example: `.vendor/anthropic/skills/git-flow`).
+2. Create a relative symlink in the matching `external/` folder:
+
+```bash
+cd external/anthropic
+ln -s ../../.vendor/anthropic/skills/git-flow git-flow
+```
 
 ---
 
@@ -56,4 +84,4 @@ To add a new skill from a vendor to your active hub:
 A symbolic link (symlink) is a "shortcut" to another file. This repo uses **relative symlinks** so that the hub remains functional even if you move it to a different folder or a new machine. The 'setup.sh' script ensures these links always find their targets in the hidden '.vendor/' folder.
 
 ### How do I update my own skills?
-Edit the files in the '/core' directory. These are your personal, stable rules. Once edited, they are instantly available to any tool that is linked to this hub.
+Edit files in `core/`. These are your personal, stable rules and can be loaded through the adapter layer into each agent environment.

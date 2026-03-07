@@ -50,23 +50,7 @@ Create a relative symlink from the vendor source into the vendor-specific extern
 
 ---
 
-## FAQs
+## FAQ: Symlinks and Relative Paths
 
-### What is a Symlink?
-A symbolic link (symlink) is a special type of file that points to another file or directory. Unlike a copy, it doesn't duplicate data; it acts as a shortcut.
-
-### Why use relative symlinks?
-Relative symlinks use paths that are relative to the location of the link itself. This ensures the links remain valid even if you move the entire repository to a different folder or machine.
-
-### How do I refresh Gemini's memory?
-After adding or updating a skill, run '/memory refresh' in your session to re-index the repository.
-
----
-
-## Integration Strategy
-
-| Platform | Interface File | Adapter Template | Link Command |
-| :--- | :--- | :--- | :--- |
-| Gemini CLI | GEMINI.md | adapters/gemini_cli.md | gemini skills link [vendor_path] |
-| Claude Code | CLAUDE.md | adapters/claude_code.md | python3 adapters/skill_loader.py ... |
-| Codex / Cursor | .cursorrules | adapters/codex.md | python3 adapters/skill_loader.py ... |
+### What is a Symlink and why use it?
+A symbolic link (symlink) is a special file that acts as a shortcut to another file or directory. This repository uses **relative symlinks** (e.g., ../../.vendor/...) instead of absolute paths. This ensures that the hub remains functional even if moved to a different directory or machine, as the internal references stay consistent with the repository's root.

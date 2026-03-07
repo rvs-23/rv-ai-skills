@@ -1,21 +1,21 @@
 # RV AI Skills Repository
 
-A centralized, platform-agnostic source of truth for AI instructions, coding standards, and procedural workflows. This architecture ensures high-fidelity behavior across Gemini CLI, Claude Code, and Codex-based environments.
+A centralized, platform-agnostic source of truth for AI instructions, coding standards, and procedural workflows.
 
 ---
 
 ## Getting Started
 
 To use this repository on a new machine:
-1. **Clone the Repo**: 'git clone git@github.com:rvs-23/rv-ai-skills.git'
+1. **Clone the Repo**: ```git clone git@github.com:rvs-23/rv-ai-skills.git```
 2. **Run Setup**: 'sh setup.sh' (This populates the hidden .vendor/ directory).
-3. **Link to Gemini**: Run 'gemini skills link' on each vendor folder in /external (e.g., external/anthropic).
+3. **Link to your agent**: See [Active Synchronization]([https://github.com/rvs-23/rv-ai-skills/edit/main/README.md](https://github.com/rvs-23/rv-ai-skills?tab=readme-ov-file#active-synchronization-cross-platform)) 
 
 ---
 
 ## Architecture Overview
 
-- **/core**: Stable, user-defined skills. These are your fundamental instructions for active development.
+- **/core**: Stable, user-defined skills.
 - **/external**: Third-party skills organized by vendor (e.g., /external/anthropic, /external/vercel, /external/openai, /external/huggingface).
 - **/.vendor**: A hidden directory containing full clones of external repositories. Ignored by git to maintain repo size.
 - **/adapters**: Active "Translation Layer" for exporting core instructions into tool-specific formats.

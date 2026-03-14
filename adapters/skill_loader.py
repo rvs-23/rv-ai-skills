@@ -3,23 +3,23 @@
 RV AI Skills Hub — Skill Loader
 
 Bridges the gap between different AI agents by delivering skills in their
-expected format. Reads from _registry.yaml as the single source of truth.
+expected format. Reads from _registry.json as the single source of truth.
 
 Usage:
-    python3 skill_loader.py --sync-all [--compact]
-    python3 skill_loader.py --sync-all --include-external [--compact]
-    python3 skill_loader.py <skill_path> <target> <project_path> [--compact]
-    python3 skill_loader.py --validate [<skill_path>]
-    python3 skill_loader.py --update-skill <skill_name>
-    python3 skill_loader.py --list
+    uv run adapters/skill_loader.py --sync-all [--compact]
+    uv run adapters/skill_loader.py --sync-all --include-external [--compact]
+    uv run adapters/skill_loader.py <skill_path> <target> <project_path> [--compact]
+    uv run adapters/skill_loader.py --validate [<skill_path>]
+    uv run adapters/skill_loader.py --update-skill <skill_name>
+    uv run adapters/skill_loader.py --list
 
 Targets: claude, codex, gemini, cursor, openai
 """
 
+import json
 import os
 import re
 import sys
-import yaml
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -28,7 +28,7 @@ HUB_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CORE_DIR = os.path.join(HUB_ROOT, 'core')
 EXTERNAL_DIR = os.path.join(HUB_ROOT, 'external')
 VENDOR_DIR = os.path.join(HUB_ROOT, '.vendor')
-REGISTRY_PATH = os.path.join(HUB_ROOT, '_registry.yaml')
+REGISTRY_PATH = os.path.join(HUB_ROOT, '_registry.json')
 
 VALID_TARGETS = ['claude', 'codex', 'gemini', 'cursor', 'openai']
 
@@ -43,12 +43,66 @@ TARGET_FILES = {
 # Registry
 # ---------------------------------------------------------------------------
 def load_registry():
-    """Load and return the parsed _registry.yaml."""
+    """Load and return the parsed _registry.json."""
     if not os.path.exists(REGISTRY_PATH):
         print(f'Error: registry not found at {REGISTRY_PATH}')
         sys.exit(1)
     with open(REGISTRY_PATH, 'r') as f:
-        return yaml.safe_load(f)
+        return json.load(f)
+
+
+def _split_list_items(raw):
+    items = []
+    current = []
+    quote = None
+
+    for char in raw:
+        if quote:
+            current.append(char)
+            if char == quote:
+                quote = None
+            continue
+
+        if char in ('"', "'"):
+            quote = char
+            current.append(char)
+            continue
+
+        if char == ',':
+            item = ''.join(current).strip()
+            if item:
+                items.append(item)
+            current = []
+            continue
+
+        current.append(char)
+
+    item = ''.join(current).strip()
+    if item:
+        items.append(item)
+    return items
+
+
+def _parse_value(raw):
+    raw = raw.strip()
+    if not raw:
+        return ''
+
+    if raw.startswith('[') and raw.endswith(']'):
+        inner = raw[1:-1].strip()
+        if not inner:
+            return []
+        return [_parse_value(item) for item in _split_list_items(inner)]
+
+    if raw.lower() == 'true':
+        return True
+    if raw.lower() == 'false':
+        return False
+
+    if (raw.startswith('"') and raw.endswith('"')) or (raw.startswith("'") and raw.endswith("'")):
+        return raw[1:-1]
+
+    return raw
 
 
 # ---------------------------------------------------------------------------
@@ -257,19 +311,36 @@ RECOMMENDED_FRONTMATTER = ['version', 'triggers', 'anti_triggers', 'tags']
 
 
 def _parse_frontmatter(content):
-    """Extract YAML frontmatter from a markdown file. Returns (dict, errors)."""
+    """Extract simple frontmatter from a markdown file. Returns (dict, errors)."""
     if not content.startswith('---'):
         return None, ['Missing YAML frontmatter (file must start with ---)']
 
-    end = content.find('---', 3)
-    if end == -1:
+    lines = content.splitlines()
+    end_idx = None
+    for index in range(1, len(lines)):
+        if lines[index].strip() == '---':
+            end_idx = index
+            break
+
+    if end_idx is None:
         return None, ['Malformed frontmatter (no closing ---)']
 
-    try:
-        fm = yaml.safe_load(content[3:end])
-        return fm, []
-    except yaml.YAMLError as e:
-        return None, [f'Invalid YAML in frontmatter: {e}']
+    frontmatter = {}
+    errors = []
+
+    for line_no, line in enumerate(lines[1:end_idx], start=2):
+        stripped = line.strip()
+        if not stripped or stripped.startswith('#'):
+            continue
+        if ':' not in line:
+            errors.append(f'Invalid frontmatter line {line_no}: {line}')
+            continue
+        key, value = line.split(':', 1)
+        frontmatter[key.strip()] = _parse_value(value)
+
+    if errors:
+        return None, errors
+    return frontmatter, []
 
 
 def validate_skill(skill_path):

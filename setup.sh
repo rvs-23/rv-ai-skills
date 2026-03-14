@@ -17,6 +17,24 @@ cd "$SCRIPT_DIR"
 SUCCEEDED=""
 FAILED=""
 LOCKFILE=".vendor.lock"
+LOADER="adapters/skill_loader.py"
+
+require_uv() {
+    if ! command -v uv >/dev/null 2>&1; then
+        echo "Error: uv is required but was not found on PATH."
+        exit 1
+    fi
+}
+
+install_codex_helper() {
+    local bin_dir="$HOME/.local/bin"
+    local target="$bin_dir/rv-skills-sync"
+    local source="$SCRIPT_DIR/scripts/rv-skills-sync"
+
+    mkdir -p "$bin_dir"
+    ln -sfn "$source" "$target"
+    echo "  Installed helper: $target -> $source"
+}
 
 # ── Vendor configuration ────────────────────────────────────────────────────
 # Parallel arrays (Bash 3.2 compatible — no associative arrays).
@@ -81,21 +99,13 @@ regenerate_symlinks() {
     echo ""
     echo "-- Regenerating external/ symlinks ----------------------------------------"
 
-    if ! command -v python3 &>/dev/null; then
-        echo "  Skipping: python3 required for symlink generation."
-        return
-    fi
+    require_uv
 
-    if ! python3 -c "import yaml" 2>/dev/null; then
-        echo "  Skipping: pyyaml required. Install with: pip install pyyaml"
-        return
-    fi
+    uv run python -c "
+import json, os
 
-    python3 -c "
-import os, yaml
-
-with open('_registry.yaml') as f:
-    reg = yaml.safe_load(f)
+with open('_registry.json') as f:
+    reg = json.load(f)
 
 vendors = reg.get('vendors', {})
 external = reg.get('skills', {}).get('external', {})
@@ -160,6 +170,8 @@ if [ "${1:-}" = "--link" ]; then
 fi
 
 # ── Full setup (default) ────────────────────────────────────────────────────
+require_uv
+
 echo ""
 echo "-- Creating directory structure ---------------------------------------------"
 mkdir -p core
@@ -172,15 +184,15 @@ echo "  Done."
 
 echo ""
 echo "-- Validating core skills ---------------------------------------------------"
-if command -v python3 &>/dev/null && python3 -c "import yaml" 2>/dev/null; then
-    python3 adapters/skill_loader.py --validate || true
-else
-    echo "  Skipping: python3 with pyyaml required. Install with: pip install pyyaml"
-fi
+uv run "$LOADER" --validate || true
 
 echo ""
 echo "-- Syncing core skills to Codex global instructions -------------------------"
-python3 adapters/skill_loader.py --sync-all
+uv run "$LOADER" --sync-all
+
+echo ""
+echo "-- Installing Codex helper -------------------------------------------------"
+install_codex_helper
 
 echo ""
 echo "-- Syncing vendor repositories ----------------------------------------------"
@@ -194,5 +206,6 @@ print_summary
 
 echo ""
 echo "  Core skills are ready for Codex on this machine."
+echo "  Run 'rv-skills-sync' after changing skills to refresh AGENTS and ~/.codex/skills."
 echo "  Run 'bash setup.sh --update' anytime to pull latest vendor changes."
 echo ""

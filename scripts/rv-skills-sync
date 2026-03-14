@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+resolve_path() {
+  local source_path="$1"
+  while [ -L "$source_path" ]; do
+    local dir
+    dir="$(cd -P "$(dirname "$source_path")" && pwd)"
+    source_path="$(readlink "$source_path")"
+    [[ "$source_path" != /* ]] && source_path="$dir/$source_path"
+  done
+  cd -P "$(dirname "$source_path")" && pwd
+}
+
+SCRIPT_DIR="$(resolve_path "${BASH_SOURCE[0]}")"
+HUB_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+LOADER="$HUB_DIR/adapters/skill_loader.py"
+CODEX_SKILLS_DIR="$HOME/.codex/skills"
+
+if ! command -v uv >/dev/null 2>&1; then
+  echo "Error: uv is required and was not found on PATH." >&2
+  exit 1
+fi
+
+if [ ! -f "$LOADER" ]; then
+  echo "Error: skill loader not found at: $LOADER" >&2
+  exit 1
+fi
+
+echo "Syncing Codex skills from: $HUB_DIR"
+uv run "$LOADER" --sync-all --include-external --compact
+
+echo
+echo "Linking discoverable Codex skills in: $CODEX_SKILLS_DIR"
+mkdir -p "$CODEX_SKILLS_DIR"
+
+for f in "$HUB_DIR"/core/*.md; do
+  [ "$(basename "$f")" = "_template.md" ] && continue
+  name="core-$(basename "$f" .md)"
+  mkdir -p "$CODEX_SKILLS_DIR/$name"
+  ln -sfn "$f" "$CODEX_SKILLS_DIR/$name/SKILL.md"
+done
+
+find "$HUB_DIR/external" -mindepth 2 -maxdepth 2 -type l | while read -r d; do
+  vendor="$(basename "$(dirname "$d")")"
+  skill="$(basename "$d")"
+  name="${vendor}-${skill}"
+  ln -sfn "$(cd "$d" && pwd -P)" "$CODEX_SKILLS_DIR/$name"
+done
+
+echo "Done. Global instructions updated at: $HOME/.codex/AGENTS.md"
+echo "Done. Discoverable skills linked at: $CODEX_SKILLS_DIR"
+echo "Start a new Codex session to load changes."

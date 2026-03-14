@@ -1,0 +1,90 @@
+{
+  "vendors": {
+    "anthropic": {
+      "repo": "https://github.com/anthropics/skills.git",
+      "skills_path": "skills"
+    },
+    "vercel": {
+      "repo": "https://github.com/vercel-labs/agent-skills.git",
+      "skills_path": "skills"
+    },
+    "openai": {
+      "repo": "https://github.com/openai/skills.git",
+      "skills_path": "skills/.curated"
+    },
+    "huggingface": {
+      "repo": "https://github.com/huggingface/skills.git",
+      "skills_path": "skills"
+    }
+  },
+  "skills": {
+    "core": [
+      {
+        "name": "writing-good-readme",
+        "path": "core/writing_good_readme.md",
+        "version": "1.2.0",
+        "triggers": [
+          "readme",
+          "documentation",
+          "write a README",
+          "project docs"
+        ],
+        "anti_triggers": [
+          "changelog",
+          "license",
+          "docstring",
+          "technical spec"
+        ],
+        "tags": [
+          "documentation",
+          "writing",
+          "core"
+        ],
+        "enabled": true
+      }
+    ],
+    "external": {
+      "anthropic": [
+        { "name": "algorithmic-art", "enabled": true },
+        { "name": "canvas-design", "enabled": true },
+        { "name": "claude-api", "enabled": true },
+        { "name": "docx", "enabled": true },
+        { "name": "frontend-design", "enabled": true },
+        { "name": "pdf", "enabled": true },
+        { "name": "pptx", "enabled": true },
+        { "name": "skill-creator", "enabled": true },
+        { "name": "web-artifacts-builder", "enabled": true },
+        { "name": "webapp-testing", "enabled": true },
+        { "name": "xlsx", "enabled": true }
+      ],
+      "vercel": [
+        { "name": "react-best-practices", "enabled": true, "entry_point": "AGENTS.md" },
+        { "name": "react-native-skills", "enabled": true, "entry_point": "AGENTS.md" },
+        { "name": "web-design-guidelines", "enabled": true }
+      ],
+      "openai": [
+        { "name": "cloudflare-deploy", "enabled": true },
+        { "name": "develop-web-game", "enabled": true },
+        { "name": "figma", "enabled": true },
+        { "name": "figma-implement-design", "enabled": true },
+        { "name": "imagegen", "enabled": true },
+        { "name": "jupyter-notebook", "enabled": true },
+        { "name": "notion-knowledge-capture", "enabled": true },
+        { "name": "notion-meeting-intelligence", "enabled": true },
+        { "name": "notion-research-documentation", "enabled": true },
+        { "name": "notion-spec-to-implementation", "enabled": true },
+        { "name": "screenshot", "enabled": true },
+        { "name": "security-best-practices", "enabled": true },
+        { "name": "speech", "enabled": true },
+        { "name": "transcribe", "enabled": true }
+      ],
+      "huggingface": [
+        { "name": "hugging-face-datasets", "enabled": true },
+        { "name": "hugging-face-jobs", "enabled": true },
+        { "name": "hugging-face-model-trainer", "enabled": true },
+        { "name": "hugging-face-paper-publisher", "enabled": true },
+        { "name": "hugging-face-trackio", "enabled": true }
+      ]
+    }
+  }
+}

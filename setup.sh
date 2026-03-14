@@ -151,7 +151,7 @@ if [ "${1:-}" = "--update" ]; then
     generate_lockfile
     regenerate_symlinks
     echo ""
-    echo "-- Refreshing Codex global + discoverable skills ---------------------------"
+    echo "-- Refreshing global + discoverable skills ---------------------------"
     bash "$CODEX_SYNC_SCRIPT"
     print_summary
     echo ""
@@ -181,7 +181,7 @@ echo "-- Validating core skills ------------------------------------------------
 uv run "$LOADER" --validate || true
 
 echo ""
-echo "-- Syncing core skills to Codex global instructions -------------------------"
+echo "-- Syncing core skills to global instructions -------------------------"
 uv run "$LOADER" --sync-all
 
 echo ""
@@ -193,12 +193,12 @@ done
 generate_lockfile
 regenerate_symlinks
 echo ""
-echo "-- Refreshing Codex global + discoverable skills ---------------------------"
+echo "-- Refreshing global + discoverable skills ---------------------------"
 bash "$CODEX_SYNC_SCRIPT"
 print_summary
 
 echo ""
-echo "  Core skills are ready for Codex on this machine."
+echo "  Core skills are ready for Codex and Gemini on this machine."
 echo "  Re-run './scripts/rv-skills-sync' after changing skills if you do not want a full setup/update run."
 echo "  Run 'bash setup.sh --update' anytime to pull latest vendor changes."
 echo ""

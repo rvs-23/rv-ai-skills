@@ -263,17 +263,16 @@ Before we begin, summarise the key rules you have been given in your instruction
 
 **Documentation**: [Gemini CLI](https://github.com/google-gemini/gemini-cli) | [Skills Reference](https://github.com/google-gemini/gemini-cli/blob/main/docs/skills.md)
 
-**How it discovers skills**: Gemini CLI uses a **directory-based pull model**. Register a directory once with `gemini skills link` and Gemini indexes its contents automatically.
+**How it discovers skills**: Gemini CLI uses a **directory-based pull model**. The setup script automatically creates symlinks in `~/.gemini/skills/` so Gemini indexes them automatically.
 
-**Setup** — run once using **absolute paths** (relative paths silently fail):
+**Setup**:
+Run the included setup script once per machine:
 
 ```bash
-gemini skills link /absolute/path/to/rv-ai-skills/core
-gemini skills link /absolute/path/to/rv-ai-skills/external/anthropic
-gemini skills link /absolute/path/to/rv-ai-skills/external/vercel
-gemini skills link /absolute/path/to/rv-ai-skills/external/openai
-gemini skills link /absolute/path/to/rv-ai-skills/external/huggingface
+bash setup.sh
 ```
+
+This will automatically validate, sync, and link all core and external skills globally for Gemini.
 
 Then refresh the index:
 

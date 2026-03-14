@@ -16,6 +16,7 @@ SCRIPT_DIR="$(resolve_path "${BASH_SOURCE[0]}")"
 HUB_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 LOADER="$HUB_DIR/adapters/skill_loader.py"
 CODEX_SKILLS_DIR="$HOME/.codex/skills"
+GEMINI_SKILLS_DIR="$HOME/.gemini/skills"
 
 if ! command -v uv >/dev/null 2>&1; then
   echo "Error: uv is required and was not found on PATH." >&2
@@ -27,27 +28,40 @@ if [ ! -f "$LOADER" ]; then
   exit 1
 fi
 
-echo "Syncing Codex skills from: $HUB_DIR"
+echo "Syncing global skills from: $HUB_DIR"
 uv run "$LOADER" --sync-all --include-external --compact
 
 echo
-echo "Linking discoverable Codex skills in: $CODEX_SKILLS_DIR"
+echo "Linking discoverable skills for Codex and Gemini..."
 mkdir -p "$CODEX_SKILLS_DIR"
+mkdir -p "$GEMINI_SKILLS_DIR"
 
 for f in "$HUB_DIR"/core/*.md; do
   [ "$(basename "$f")" = "_template.md" ] && continue
   name="core-$(basename "$f" .md)"
+  
+  # Codex
   mkdir -p "$CODEX_SKILLS_DIR/$name"
   ln -sfn "$f" "$CODEX_SKILLS_DIR/$name/SKILL.md"
+  
+  # Gemini
+  mkdir -p "$GEMINI_SKILLS_DIR/$name"
+  ln -sfn "$f" "$GEMINI_SKILLS_DIR/$name/SKILL.md"
 done
 
 find "$HUB_DIR/external" -mindepth 2 -maxdepth 2 -type l | while read -r d; do
   vendor="$(basename "$(dirname "$d")")"
   skill="$(basename "$d")"
   name="${vendor}-${skill}"
+  
+  # Codex
   ln -sfn "$(cd "$d" && pwd -P)" "$CODEX_SKILLS_DIR/$name"
+  
+  # Gemini
+  ln -sfn "$(cd "$d" && pwd -P)" "$GEMINI_SKILLS_DIR/$name"
 done
 
 echo "Done. Global instructions updated at: $HOME/.codex/AGENTS.md"
-echo "Done. Discoverable skills linked at: $CODEX_SKILLS_DIR"
-echo "Start a new Codex session to load changes."
+echo "Done. Discoverable Codex skills linked at: $CODEX_SKILLS_DIR"
+echo "Done. Discoverable Gemini skills linked at: $GEMINI_SKILLS_DIR"
+echo "Start a new session to load changes."

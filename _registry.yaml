@@ -1,46 +1,117 @@
+# =============================================================================
+# RV AI Skills Hub — Skill Registry
+#
+# This file is the single source of truth for all skills managed by the hub.
+# The skill_loader.py reads this registry to resolve paths, determine entry
+# points, and decide which skills to include in --sync-all operations.
+#
+# Format:
+#   core skills     — full metadata inline (path, version, triggers, tags)
+#   external skills — name, enabled flag, and optional entry_point override
+#
+# Entry Point Resolution (external skills):
+#   1. If entry_point is set explicitly, use that file.
+#   2. If the skill directory contains AGENTS.md, use it (compiled > source).
+#   3. Fall back to SKILL.md (universal across all vendors).
+# =============================================================================
+
+vendors:
+  anthropic:
+    repo: https://github.com/anthropics/skills.git
+    skills_path: skills
+  vercel:
+    repo: https://github.com/vercel-labs/agent-skills.git
+    skills_path: skills
+  openai:
+    repo: https://github.com/openai/skills.git
+    skills_path: skills/.curated
+  huggingface:
+    repo: https://github.com/huggingface/skills.git
+    skills_path: skills
+
 skills:
   core:
     - name: writing-good-readme
       path: core/writing_good_readme.md
-      version: 1.1.0
+      version: 1.2.0
       triggers: ["readme", "documentation", "write a README", "project docs"]
       anti_triggers: ["changelog", "license", "docstring", "technical spec"]
       tags: [documentation, writing, core]
+      enabled: true
+
   external:
     anthropic:
-      - algorithmic-art
-      - canvas-design
-      - claude-api
-      - docx
-      - frontend-design
-      - pdf
-      - pptx
-      - skill-creator
-      - web-artifacts-builder
-      - webapp-testing
-      - xlsx
+      - name: algorithmic-art
+        enabled: true
+      - name: canvas-design
+        enabled: true
+      - name: claude-api
+        enabled: true
+      - name: docx
+        enabled: true
+      - name: frontend-design
+        enabled: true
+      - name: pdf
+        enabled: true
+      - name: pptx
+        enabled: true
+      - name: skill-creator
+        enabled: true
+      - name: web-artifacts-builder
+        enabled: true
+      - name: webapp-testing
+        enabled: true
+      - name: xlsx
+        enabled: true
+
     vercel:
-      - react-best-practices
-      - react-native-skills
-      - web-design-guidelines
+      - name: react-best-practices
+        enabled: true
+        entry_point: AGENTS.md
+      - name: react-native-skills
+        enabled: true
+        entry_point: AGENTS.md
+      - name: web-design-guidelines
+        enabled: true
+
     openai:
-      - cloudflare-deploy
-      - develop-web-game
-      - figma
-      - figma-implement-design
-      - imagegen
-      - jupyter-notebook
-      - notion-knowledge-capture
-      - notion-meeting-intelligence
-      - notion-research-documentation
-      - notion-spec-to-implementation
-      - screenshot
-      - security-best-practices
-      - speech
-      - transcribe
+      - name: cloudflare-deploy
+        enabled: true
+      - name: develop-web-game
+        enabled: true
+      - name: figma
+        enabled: true
+      - name: figma-implement-design
+        enabled: true
+      - name: imagegen
+        enabled: true
+      - name: jupyter-notebook
+        enabled: true
+      - name: notion-knowledge-capture
+        enabled: true
+      - name: notion-meeting-intelligence
+        enabled: true
+      - name: notion-research-documentation
+        enabled: true
+      - name: notion-spec-to-implementation
+        enabled: true
+      - name: screenshot
+        enabled: true
+      - name: security-best-practices
+        enabled: true
+      - name: speech
+        enabled: true
+      - name: transcribe
+        enabled: true
+
     huggingface:
-      - hugging-face-datasets
-      - hugging-face-jobs
-      - hugging-face-model-trainer
-      - hugging-face-paper-publisher
-      - hugging-face-trackio
+      - name: hugging-face-datasets
+        enabled: true
+      - name: hugging-face-jobs
+        enabled: true
+      - name: hugging-face-model-trainer
+        enabled: true
+      - name: hugging-face-paper-publisher
+        enabled: true
+      - name: hugging-face-trackio
+        enabled: true

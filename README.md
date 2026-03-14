@@ -1,28 +1,123 @@
 # RV AI Skills Hub
 
-A centralized **"portable brain"** for AI agent instructions and procedural workflows. Instead of re-explaining your preferences to each AI tool at the start of every project, you encode that knowledge once as a **skill** — a structured Markdown file — and this hub delivers it automatically to whichever agents you use, on any machine.
+A centralized **"portable brain"** for AI agent instructions and procedural workflows. Encode your knowledge once as a **skill** — a structured Markdown file — and this hub delivers it automatically to whichever AI coding agents you use, on any machine.
+
+**Supported agents**: [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) | [Codex CLI](https://github.com/openai/codex) | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | [Cursor](https://docs.cursor.com/) | [ChatGPT / OpenAI API](https://platform.openai.com/docs)
 
 ---
 
-## 1. How It Works
+## Table of Contents
 
-Every AI agent has a different mechanism for consuming custom instructions. **Gemini CLI** discovers skill directories. **Codex CLI** reads a global instructions file at startup. **Claude Code** reads a `CLAUDE.md` file in your project root. **Cursor** reads `.mdc` rule files from a `.cursor/rules/` folder. Rather than maintaining separate copies of your knowledge for each tool, this hub stores skills in one place and uses `adapters/skill_loader.py` to deliver them in the format each agent expects.
-
-There are two kinds of skills. **Core skills** live in `core/` and are things only you can write — your coding standards, your git workflow, your team conventions. **External skills** live in `external/` and are maintained by vendors like Anthropic, OpenAI, Vercel, and HuggingFace, covering general-purpose tasks like document creation or frontend design.
+1. [Quick Start](#1-quick-start)
+2. [Architecture](#2-architecture)
+3. [Directory Structure](#3-directory-structure)
+4. [How to Use with Each AI Agent](#4-how-to-use-with-each-ai-agent)
+5. [Skill Loader CLI Reference](#5-skill-loader-cli-reference)
+6. [Writing Your Own Skills](#6-writing-your-own-skills)
+7. [External Skill Sourcing](#7-external-skill-sourcing)
+8. [Cross-CLI Compatibility Matrix](#8-cross-cli-compatibility-matrix)
+9. [FAQ](#9-faq)
 
 ---
 
-## 2. Getting Started
-
-Clone the repository and run the setup script. **One command handles everything**: directory scaffolding, global Codex skill injection, and vendor repository syncing.
+## 1. Quick Start
 
 ```bash
 git clone git@github.com:rvs-23/rv-ai-skills.git
 cd rv-ai-skills
+pip install pyyaml    # required dependency
 sh setup.sh
 ```
 
-After setup completes, follow the relevant sections below for each agent you use.
+`setup.sh` performs three operations in sequence:
+1. Creates the directory scaffold (`core/`, `.vendor/`, `external/`).
+2. Validates all core skills and syncs them to `~/.codex/AGENTS.md` for global Codex access.
+3. Clones vendor repositories (Anthropic, Vercel, OpenAI, HuggingFace) into `.vendor/` and generates a `.vendor.lock` lockfile.
+
+After setup completes, follow [Section 4](#4-how-to-use-with-each-ai-agent) for each agent you use.
+
+---
+
+## 2. Architecture
+
+### Technical Overview
+
+```
+                        _registry.yaml
+                    (single source of truth)
+                             |
+                             v
+                     +-----------------+
+                     |  skill_loader.py |
+                     |  (adapter layer) |
+                     +-----------------+
+                      /   |    |   |   \
+                     v    v    v   v    v
+               CLAUDE.md  |  GEMINI.md |  .cursor/rules/
+          (per-project)   |  (per-proj)|  (symlinks)
+                          v            v
+                   AGENTS.md      stdout
+               (~/.codex/ global   (copy-paste
+                or per-project)    for OpenAI)
+
+    +-----------+          +------------------+
+    |  core/    |          |  external/       |
+    | (your     |          | (symlinks to     |
+    |  skills)  |          |  .vendor/ repos) |
+    +-----------+          +------------------+
+                                   |
+                           +---------------+
+                           |   .vendor/    |
+                           | anthropic/    |
+                           | vercel/       |
+                           | openai/       |
+                           | huggingface/  |
+                           +---------------+
+```
+
+### Design Principles
+
+1. **Single source of truth**: `_registry.yaml` defines every skill, its vendor, enabled status, and entry-point resolution strategy. The loader reads the registry — not the filesystem — to decide what to sync.
+
+2. **Push vs. pull models**: Different agents discover skills differently. The loader abstracts this away.
+   - **Push** (Codex): Content must exist in a static file before the session starts.
+   - **Pull** (Gemini, Claude Code, Cursor): Content is discovered at runtime from linked directories or project files.
+   - **Manual** (OpenAI/ChatGPT): Content is printed to stdout for copy-paste.
+
+3. **Vendor format resolution**: Vendors use different file structures. The loader resolves the best entry point automatically:
+   - If the registry specifies an explicit `entry_point`, use it.
+   - If `AGENTS.md` exists in the skill directory, prefer it (compiled > source).
+   - Fall back to `SKILL.md` (universal across all vendors).
+
+4. **Idempotency**: All sync operations use marker-based deduplication (`--- SKILL: name ---` / `--- END SKILL: name ---`). Safe to re-run at any time.
+
+5. **Two-tier skill system**:
+   - **Core skills** (`core/`): Your personal knowledge — coding standards, workflows, team conventions. Version-controlled, edit freely.
+   - **External skills** (`external/`): Vendor-maintained. Exposed via symlinks to `.vendor/` clones. Never edit directly.
+
+6. **Dependency resolution**: Skills can declare `depends_on` in frontmatter. The loader resolves and bundles dependencies automatically when syncing.
+
+7. **Compact mode**: Large skills (e.g., Vercel's 22KB compiled rulesets) can blow context budgets. The `--compact` flag strips code examples, keeping only rules and descriptions.
+
+8. **Reproducibility**: `setup.sh` generates `.vendor.lock` recording the git SHA of each vendor clone, so you can detect drift and reproduce exact builds.
+
+### Data Flow
+
+```
+User writes skill in core/
+        |
+        v
+skill_loader.py --validate      Validates frontmatter + structure
+        |
+        v
+skill_loader.py --sync-all      Writes to ~/.codex/AGENTS.md (global)
+        |
+        v
+skill_loader.py <ref> claude .   Appends to project CLAUDE.md
+skill_loader.py <ref> gemini .   Appends to project GEMINI.md
+skill_loader.py <ref> cursor .   Symlinks to .cursor/rules/
+skill_loader.py <ref> openai .   Prints to stdout
+```
 
 ---
 
@@ -30,35 +125,128 @@ After setup completes, follow the relevant sections below for each agent you use
 
 ```
 rv-ai-skills/
-├── core/                    # Your personal skills. Version-controlled, edit freely.
-├── external/                # Symlinks to vendor skills. Never edit directly.
-│   ├── anthropic/
-│   ├── huggingface/
-│   ├── openai/
-│   └── vercel/
-├── adapters/                # Integration guides and the skill loader tool.
-│   ├── skill_loader.py      # Delivers skills to each agent in the right format.
-│   ├── claude_code.md
-│   ├── codex.md
-│   ├── cursor_rules.md
-│   ├── gemini_cli.md
-│   └── openai_system.md
-├── .vendor/                 # Raw vendor git clones. Git-ignored, populated by setup.sh.
-├── _registry.yaml           # Index of all available skills.
-└── setup.sh
+├── core/                        Your personal skills. Version-controlled, edit freely.
+│   ├── _template.md             Template for creating new skills.
+│   └── writing_good_readme.md   Example skill: documentation standards.
+├── external/                    Symlinks to vendor skills. Never edit directly.
+│   ├── anthropic/               11 skills (PDF, DOCX, PPTX, XLSX, etc.)
+│   ├── huggingface/             5 skills (Datasets, Model Trainer, etc.)
+│   ├── openai/                  14 skills (Figma, Jupyter, Notion, etc.)
+│   └── vercel/                  3 skills (React, React Native, Web Design)
+├── adapters/                    Integration layer.
+│   ├── skill_loader.py          Multi-target skill distribution engine.
+│   ├── claude_code.md           Claude Code integration guide.
+│   ├── codex.md                 Codex CLI integration guide.
+│   ├── gemini_cli.md            Gemini CLI integration guide.
+│   ├── cursor_rules.md          Cursor integration guide.
+│   └── openai_system.md         OpenAI API integration guide.
+├── .vendor/                     Raw vendor git clones. Git-ignored, populated by setup.sh.
+├── _registry.yaml               Single source of truth: all skills, vendors, metadata.
+├── .vendor.lock                 Vendor commit SHAs for reproducibility.
+├── setup.sh                     Bootstrap and update script.
+└── .gitignore
 ```
+
+### What Is Committed vs. Generated
+
+| Path | Committed | Purpose |
+|------|-----------|---------|
+| `core/` | Yes | Your skills — the source of truth |
+| `external/` symlinks | Yes | Documents which vendor skills you depend on |
+| `_registry.yaml` | Yes | Skill index and vendor configuration |
+| `.vendor.lock` | Yes | Reproducibility — pins vendor SHAs |
+| `.vendor/` | No | Full git clones, regenerated by `setup.sh` |
+| `~/.codex/AGENTS.md` | No | Machine-specific compiled output |
 
 ---
 
-## 4. Using It in Gemini CLI
+## 4. How to Use with Each AI Agent
 
-### How Gemini discovers skills
+### 4a. Claude Code
 
-Gemini CLI uses a **directory-based pull model**. You register a directory once using `gemini skills link`, and Gemini indexes its contents — making every skill file inside available in every future session on that machine. This is a **one-time action**, not a per-project one.
+**Documentation**: [Claude Code Overview](https://docs.anthropic.com/en/docs/claude-code/overview) | [CLAUDE.md Reference](https://docs.anthropic.com/en/docs/claude-code/memory#claudemd)
 
-### Setup
+**How it discovers skills**: Claude Code reads `CLAUDE.md` in the project root at session start. This is a **per-project setup**.
 
-Run the following once after cloning, using the **absolute path** to your hub. Relative paths are the most common reason `gemini skills link` silently fails to register a directory. If you are unsure of the absolute path, run `pwd` from inside `rv-ai-skills` and use that as your base.
+**Setup** — inject skills into any project:
+
+```bash
+# Inject a core skill
+python3 adapters/skill_loader.py core/writing_good_readme.md claude /path/to/project
+
+# Inject an external skill (three equivalent formats)
+python3 adapters/skill_loader.py external/anthropic/pdf claude /path/to/project
+python3 adapters/skill_loader.py anthropic:pdf claude /path/to/project
+
+# Inject with compact mode (smaller context footprint)
+python3 adapters/skill_loader.py anthropic:pdf claude /path/to/project --compact
+```
+
+**Verification** — open the project in Claude Code and ask:
+
+```
+What instructions are you operating under for this project? List everything in CLAUDE.md.
+```
+
+**Adding a new skill later**: Re-run the loader pointing at the new skill file. Idempotency markers prevent duplicates.
+
+---
+
+### 4b. Codex CLI
+
+**Documentation**: [Codex CLI](https://github.com/openai/codex) | [AGENTS.md Reference](https://github.com/openai/codex/blob/main/docs/AGENTS.md)
+
+**How it discovers skills**: Codex uses a **push model** — it reads `~/.codex/AGENTS.md` at session start. Nothing is pulled at runtime. Content must exist before the session begins.
+
+**Setup — global (all projects on this machine)**:
+
+```bash
+# Core skills only (default)
+python3 adapters/skill_loader.py --sync-all
+
+# Core + all enabled external skills
+python3 adapters/skill_loader.py --sync-all --include-external
+
+# Core + externals, compact mode (recommended for large skill sets)
+python3 adapters/skill_loader.py --sync-all --include-external --compact
+```
+
+**Setup — per-project override** (layers on top of global):
+
+```bash
+python3 adapters/skill_loader.py core/writing_good_readme.md codex /path/to/project
+python3 adapters/skill_loader.py anthropic:pdf codex /path/to/project
+```
+
+**Updating a changed skill**:
+
+```bash
+python3 adapters/skill_loader.py --update-skill writing_good_readme
+```
+
+**Verification**:
+
+```bash
+cat ~/.codex/AGENTS.md
+```
+
+Your skills appear wrapped in `--- SKILL: name ---` markers. In a Codex session, ask:
+
+```
+Before we begin, summarise the key rules you have been given in your instructions.
+```
+
+**Important**: Codex loses precision past roughly 2,000 words. If you have many skills, use `--compact` or keep some project-level only.
+
+---
+
+### 4c. Gemini CLI
+
+**Documentation**: [Gemini CLI](https://github.com/google-gemini/gemini-cli) | [Skills Reference](https://github.com/google-gemini/gemini-cli/blob/main/docs/skills.md)
+
+**How it discovers skills**: Gemini CLI uses a **directory-based pull model**. Register a directory once with `gemini skills link` and Gemini indexes its contents automatically.
+
+**Setup** — run once using **absolute paths** (relative paths silently fail):
 
 ```bash
 gemini skills link /absolute/path/to/rv-ai-skills/core
@@ -68,230 +256,323 @@ gemini skills link /absolute/path/to/rv-ai-skills/external/openai
 gemini skills link /absolute/path/to/rv-ai-skills/external/huggingface
 ```
 
-Then refresh Gemini's index so it processes the newly linked directories:
+Then refresh the index:
 
 ```
 /memory refresh
 ```
 
-### Adding a new skill later
+**Per-project injection** (alternative to directory linking):
 
-When you add a new file to `core/`, Gemini picks it up **automatically** on the next `/memory refresh` — no re-linking required, because the entire `core/` directory is already registered.
+```bash
+python3 adapters/skill_loader.py core/writing_good_readme.md gemini /path/to/project
+python3 adapters/skill_loader.py anthropic:pdf gemini /path/to/project
+```
 
-### Verification
+This appends to a `GEMINI.md` file in the project root.
 
-To confirm your directories are registered, open a Gemini CLI session and run:
+**Adding a new skill later**: New files in linked directories are picked up automatically on the next `/memory refresh`.
+
+**Verification**:
 
 ```
 /skills list
 ```
 
-Your linked directories should appear in the output. Once you see them listed, do a **behavioural test** by asking Gemini to perform a task that one of your skills governs and check that the output follows the skill's rules. If it does not, the most likely cause is that the skill file needs to be more directive — **concise, imperative instructions** are weighted more heavily than longer prose.
-
 ---
 
-## 5. Using It in Codex CLI
+### 4d. Cursor
 
-### How Codex discovers skills
+**Documentation**: [Cursor Rules](https://docs.cursor.com/context/rules)
 
-Codex CLI works fundamentally differently from Gemini and this distinction is worth understanding clearly. Codex uses a **push model**: it does not discover directories at runtime. Instead, it reads a static file that must already contain your instructions before a session begins. Nothing is pulled automatically — content must be **pushed in ahead of time**.
+**How it discovers skills**: Cursor reads `.mdc` rule files from `.cursor/rules/` inside the project. The loader creates **symlinks** so edits to skills are reflected immediately.
 
-The right place to push is Codex's **global instructions file** at `~/.codex/AGENTS.md`. Codex loads this file automatically at the start of every session on your machine, regardless of which project you are in. By writing all your core skills into this one file, every Codex session everywhere has your full knowledge base with **zero per-project setup**.
-
-### Setup: global skill discovery
-
-`setup.sh` handles this automatically as part of its sequence, but you can run it manually at any time:
+**Setup**:
 
 ```bash
-python3 adapters/skill_loader.py --sync-all
+python3 adapters/skill_loader.py core/writing_good_readme.md cursor /path/to/project
+python3 adapters/skill_loader.py anthropic:pdf cursor /path/to/project
 ```
 
-This command scans every `.md` file in `core/`, checks which ones are not yet present in `~/.codex/AGENTS.md`, and appends the new ones. Skills already present are skipped, so the command is **safe to re-run** at any time. It is the right command to run whenever you add a new skill to `core/`.
+**Legacy support** (Cursor below v0.45): Copy skill content directly into `.cursorrules` at the project root.
 
-### Cross-machine workflow
-
-The `~/.codex/AGENTS.md` file is intentionally not committed to this repository — it is a **machine-specific compiled output** generated from `core/`. When you clone this repository on a new machine, `sh setup.sh` regenerates it automatically. Your source of truth is always `core/`; the global file is always derived from it.
-
-### Per-project overrides
-
-If a specific project needs instructions beyond your global set, you can inject a skill into that project's local `AGENTS.md` without touching your global file:
-
-```bash
-python3 adapters/skill_loader.py core/your-skill.md codex /path/to/your/project
-```
-
-Codex **merges the global file and any local `AGENTS.md`** it finds, so project-level additions layer cleanly on top of your global skills.
-
-### Updating a skill that is already synced
-
-Because `--sync-all` skips skills already present in the global file, updating a changed skill requires one extra step. Open `~/.codex/AGENTS.md` in any editor, **delete the block** between `--- SKILL: skill-name ---` and `--- END SKILL: skill-name ---`, save the file, then run `--sync-all` again to re-inject the updated version.
-
-### Verification
-
-First, inspect the global file directly to confirm your skills are present:
-
-```bash
-cat ~/.codex/AGENTS.md
-```
-
-Your skill content should be there, wrapped in the `--- SKILL: name ---` markers. Also check the overall length — **Codex loses precision on content past roughly 2,000 words**, so if you have many skills, consider whether all of them need to be global or whether some should stay project-level only.
-
-Then open a Codex session in any directory and ask it to reflect its own instructions:
-
-```
-Before we begin, summarise the key rules you have been given in your instructions.
-```
-
-A correctly loaded set of skills produces a summary that maps clearly to what you wrote. If the summary is vague or misses specific rules, the most likely cause is that the global file has grown too long, or the relevant skill appears **too far down the file**. Codex weights content that appears earlier in `AGENTS.md` more heavily — **order matters**.
-
----
-
-## 6. Using It in Claude Code
-
-### How Claude Code discovers skills
-
-Claude Code reads a `CLAUDE.md` file placed in the root of whichever project you are working in. This is a **per-project setup** — you inject the skills you want into that project's `CLAUDE.md` and Claude Code picks them up automatically when you open it.
-
-### Setup
-
-Navigate to your skills hub and use the loader to inject a skill into a target project:
-
-```bash
-python3 adapters/skill_loader.py core/your-skill.md claude /path/to/your/project
-```
-
-The loader appends the skill's content wrapped in **idempotency markers**, so running the command twice does not produce duplicate content. If you want multiple skills active in a project, run the command once per skill file.
-
-### Adding a new skill later
-
-When you add a new core skill and want it active in an existing project, re-run the loader pointing at the new skill file and the project path. The **idempotency check** ensures only the new skill is added.
-
-### Verification
-
-Open the project in Claude Code and ask:
-
-```
-What instructions are you operating under for this project? List everything in CLAUDE.md.
-```
-
-Claude Code will reflect the file contents. If your skills appear in the response, the integration is working. Follow up by asking it to perform a task that one of your skills governs and check the output against the skill's **acceptance checklist**.
-
----
-
-## 7. Using It in Cursor
-
-### How Cursor discovers skills
-
-Cursor reads `.mdc` rule files from a `.cursor/rules/` directory inside your project. The skill loader creates a **symlink** there rather than copying the file, which means edits to a skill in `core/` are **reflected in Cursor immediately** without needing to re-run the loader.
-
-### Setup
-
-```bash
-python3 adapters/skill_loader.py core/your-skill.md cursor /path/to/your/project
-```
-
-For legacy Cursor support (below version 0.45), copy the skill content directly into a `.cursorrules` file at the project root instead.
-
-### Verification
-
-Open the project in Cursor and navigate to **Cursor Settings → Rules** (via `Cmd+Shift+P` → "Open Cursor Settings"). Your skill should appear in the rules list by name. If it is absent, the symlink is likely broken. Inspect it from the terminal:
-
-```bash
-ls -la .cursor/rules/
-```
-
-A healthy entry looks like `your-skill.mdc -> /absolute/path/to/core/your-skill.md`. A broken one points to a path that no longer resolves — re-run the loader from the hub directory to regenerate it with a **correct absolute path**.
-
-Once the rule appears in the settings panel, open the Cursor chat (`Cmd+L`) and ask:
+**Verification**: Open the project in Cursor, then `Cmd+Shift+P` > "Open Cursor Settings" > Rules. Your skills appear by name. In the chat (`Cmd+L`):
 
 ```
 What project rules are you currently following?
 ```
 
-Cursor will list its active rule files and summarise their content. If your skill is named in that response, the integration is complete.
-
----
-
-## 8. Using It with OpenAI API
-
-The `openai` target prints a skill's content as a **formatted system prompt**, ready to paste into the System Instructions field in ChatGPT, the API Playground, or an OpenAI Assistant:
+**Troubleshooting**: If a skill is missing, inspect the symlink:
 
 ```bash
-python3 adapters/skill_loader.py core/your-skill.md openai .
+ls -la .cursor/rules/
 ```
 
-Copy the output between the `--- SYSTEM PROMPT ---` markers and paste it into your tool's **system-level instructions** field. See `adapters/openai_system.md` for more detail.
+A healthy entry: `skill.mdc -> /absolute/path/to/core/skill.md`. If broken, re-run the loader.
 
 ---
 
-## 9. Adding Your Own Skills
+### 4e. ChatGPT / OpenAI API
 
-The most valuable skills in this repository are the ones you write yourself. Create a new `.md` file in `core/` following this structure:
+**Documentation**: [OpenAI Platform](https://platform.openai.com/docs) | [System Instructions](https://platform.openai.com/docs/guides/text)
+
+**How it discovers skills**: Manual copy-paste into the system prompt field.
+
+**Setup**:
+
+```bash
+# Print to stdout — copy the output
+python3 adapters/skill_loader.py core/writing_good_readme.md openai .
+
+# Compact mode for token-limited contexts
+python3 adapters/skill_loader.py anthropic:pdf openai . --compact
+```
+
+Copy the text between `--- SYSTEM PROMPT ---` markers and paste into:
+- **ChatGPT**: Settings > Custom Instructions > "What would you like ChatGPT to know?"
+- **API Playground**: System message field
+- **Assistants API**: Instructions parameter in the assistant configuration
+
+---
+
+## 5. Skill Loader CLI Reference
+
+All commands are run from the hub root directory.
+
+### Sync all skills globally (Codex)
+
+```bash
+python3 adapters/skill_loader.py --sync-all
+python3 adapters/skill_loader.py --sync-all --include-external
+python3 adapters/skill_loader.py --sync-all --include-external --compact
+```
+
+### Inject a skill into a project
+
+```bash
+python3 adapters/skill_loader.py <skill_ref> <target> <project_path> [--compact]
+```
+
+**Skill reference formats**:
+
+| Format | Example |
+|--------|---------|
+| File path | `core/writing_good_readme.md` |
+| External directory | `external/anthropic/pdf` |
+| Vendor shorthand | `anthropic:pdf` |
+
+**Targets**: `claude`, `codex`, `gemini`, `cursor`, `openai`
+
+### Validate skills
+
+```bash
+# Validate all core skills
+python3 adapters/skill_loader.py --validate
+
+# Validate a single file
+python3 adapters/skill_loader.py --validate core/writing_good_readme.md
+```
+
+Checks: frontmatter presence, required fields (`name`, `description`), recommended fields (`version`, `triggers`, `anti_triggers`, `tags`), list types, body structure.
+
+### Update a changed skill
+
+```bash
+python3 adapters/skill_loader.py --update-skill writing_good_readme
+python3 adapters/skill_loader.py --update-skill anthropic:pdf
+```
+
+Removes the old version from `~/.codex/AGENTS.md` and re-injects the current version. No manual editing required.
+
+### List all skills
+
+```bash
+python3 adapters/skill_loader.py --list
+```
+
+Shows all registered skills with their resolution status (`OK`, `MISSING`, `DISABLED`).
+
+---
+
+## 6. Writing Your Own Skills
+
+### Creating a new skill
+
+Copy the template and edit:
+
+```bash
+cp core/_template.md core/your_skill_name.md
+```
+
+### Skill file format
 
 ```markdown
 ---
 name: core:your-skill-name
 description: One sentence describing what this skill enables.
 version: 1.0.0
-triggers: ["phrase that should activate this", "another trigger phrase"]
-anti_triggers: ["situations where this skill should not apply"]
+triggers: ["phrase that activates this skill", "another trigger"]
+anti_triggers: ["situations where this skill must not apply"]
+tags: [category, subcategory]
+depends_on: []
 ---
 
 # Skill Title
 
 ## Trigger Conditions
-- **Use When**: The specific situations this skill covers.
-- **Do Not Use When**: Explicit cases to prevent misapplication.
+- **Use When**: Specific situations this skill covers.
+- **Do Not Use When**: Explicit exclusions.
 
 ## Instructions
-Step-by-step guidance written for an agent that will read this once and
-immediately execute. Be more specific than feels natural.
+Step-by-step guidance in imperative mood.
 
 ## Common Mistakes
 What the naive approach looks like and why it fails.
 
 ## Acceptance Checklist
-- [ ] First quality criterion
-- [ ] Second quality criterion
+- [ ] First quality criterion.
+- [ ] Second quality criterion.
 ```
 
-After creating a new skill, propagate it with a single command:
+### Frontmatter fields
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `name` | Yes | string | Unique identifier. Core skills use `core:` prefix. |
+| `description` | Yes | string | One-line summary. Used for relevance matching. |
+| `version` | Recommended | string | Semver. Increment on meaningful changes. |
+| `triggers` | Recommended | list | Phrases that should activate this skill. |
+| `anti_triggers` | Recommended | list | Situations where this skill must not apply. |
+| `tags` | Recommended | list | Categorization labels. |
+| `depends_on` | Optional | list | Other skills this one requires. Resolved automatically. |
+
+### Style conventions
+
+- **No emojis**: Professional, text-only aesthetic.
+- **Imperative mood**: "Clone the repo" not "You should clone the repo."
+- **Commands in triple backticks** with language tags (`bash`, `python`, `tsx`).
+- **Paths in single backticks**: `core/skill.md`.
+- **URLs as Markdown links**: `[Docs](https://example.com)`. Never raw URLs.
+
+### After creating a skill
 
 ```bash
-# Codex: adds the new skill to the global instructions file
+# Validate
+python3 adapters/skill_loader.py --validate core/your_skill_name.md
+
+# Register in _registry.yaml (add an entry under skills.core)
+
+# Sync to Codex
 python3 adapters/skill_loader.py --sync-all
 
-# Gemini: run /memory refresh in a Gemini CLI session to re-index core/
+# Gemini picks it up automatically on /memory refresh (core/ is already linked)
+
+# Inject into a specific project
+python3 adapters/skill_loader.py core/your_skill_name.md claude /path/to/project
 ```
 
 ---
 
-## 10. External Skill Sourcing
+## 7. External Skill Sourcing
 
-External skills are maintained by vendors, cloned into `.vendor/` by `setup.sh`, and exposed through **symlinks** in `external/`. To pull the latest changes from a vendor:
+### Updating vendor repositories
 
 ```bash
+# Update all vendors and regenerate lockfile
+sh setup.sh --update
+
+# Or update a single vendor manually
 cd .vendor/anthropic && git pull
 ```
 
-To make a specific vendor skill available through the hub, create a symlink in the appropriate `external/` subdirectory:
+### Adding a new vendor skill
+
+1. Create the symlink in the appropriate `external/` subdirectory:
 
 ```bash
-cd external/anthropic && ln -s ../../.vendor/anthropic/skills/skill-name skill-name
+cd external/anthropic && ln -s ../../.vendor/anthropic/skills/new-skill new-skill
 ```
+
+2. Register it in `_registry.yaml` under the vendor's skill list:
+
+```yaml
+    anthropic:
+      - name: new-skill
+        enabled: true
+```
+
+3. Run `sh setup.sh --link` to verify symlinks.
+
+### Regenerating all symlinks from registry
+
+```bash
+sh setup.sh --link
+```
+
+This reads `_registry.yaml` and creates any missing symlinks, removes disabled ones.
+
+### Vendor lockfile
+
+`.vendor.lock` records the git SHA and date of each vendor clone:
+
+```
+anthropic: a1b2c3d4...  # 2026-03-14 10:00:00 -0400
+vercel: e5f6g7h8...     # 2026-03-14 10:00:00 -0400
+```
+
+Commit this file. It enables reproducibility and drift detection — if `setup.sh --update` changes a SHA, you see it in the diff.
 
 ---
 
-## 11. FAQ
+## 8. Cross-CLI Compatibility Matrix
 
-1. **Why is `~/.codex/AGENTS.md` not committed to this repository?**
-   It is a **machine-specific, compiled output** generated from `core/`. Committing generated output alongside the source that produces it creates a synchronisation problem. The rule is: **edit skills in `core/`, run `--sync-all` to update the global file, and never edit the global file directly.**
+| Capability | Claude Code | Codex CLI | Gemini CLI | Cursor | OpenAI API |
+|------------|-------------|-----------|------------|--------|------------|
+| **Discovery model** | Pull (CLAUDE.md) | Push (~/.codex/AGENTS.md) | Pull (directory link) | Pull (.cursor/rules/) | Manual (copy-paste) |
+| **Global skills** | No native support | `~/.codex/AGENTS.md` | `gemini skills link` | No native support | N/A |
+| **Per-project skills** | `CLAUDE.md` | Local `AGENTS.md` | `GEMINI.md` or linked dir | `.cursor/rules/*.mdc` | System prompt field |
+| **Skill hot-reload** | Yes | No (session start only) | `/memory refresh` | Yes | N/A |
+| **Context budget** | ~200K tokens | ~128K tokens | ~1M tokens | Varies by model | Varies by model |
+| **Compact mode value** | Low | High | Low | Medium | High |
+| **External skill support** | Yes (via loader) | Yes (via loader) | Yes (directory link) | Yes (via loader) | Yes (via loader) |
+| **Dependency resolution** | Automatic | Automatic | Manual | Automatic | N/A |
+
+### When to use `--compact`
+
+- **Always** for Codex `--sync-all --include-external` (context limit is tight).
+- **Recommended** for OpenAI API (token costs).
+- **Optional** for Claude Code and Cursor (generous context).
+- **Unnecessary** for Gemini CLI (1M token context).
+
+---
+
+## 9. FAQ
+
+1. **Why is `~/.codex/AGENTS.md` not committed?**
+   It is a machine-specific compiled output generated from `core/`. The rule: **edit skills in `core/`, run `--sync-all` to update the global file, never edit the global file directly.**
 
 2. **Why is `.vendor/` git-ignored?**
-   It contains full git repository clones. Nesting git repositories complicates history and clone behaviour. Your `external/` symlinks are committed — they document which vendor skills you depend on — while the actual content is **fetched fresh by `setup.sh`**.
+   It contains full git clones. Nesting git repositories complicates history. The `external/` symlinks are committed — they document dependencies — while actual content is fetched fresh by `setup.sh`. `.vendor.lock` pins the exact commit SHAs.
 
 3. **Is `--sync-all` safe to run multiple times?**
-   **Yes.** Before writing, it checks `~/.codex/AGENTS.md` for the skill's idempotency marker and skips anything already present. Only genuinely new skills are appended.
+   Yes. It checks for idempotency markers and skips skills already present.
 
-4. **Why do Cursor symlinks use absolute paths but `external/` symlinks use relative paths?**
-   Cursor resolves symlinks at load time from an unpredictable working directory, so **absolute paths** are required for reliable resolution. The `external/` symlinks are resolved by shell commands where the working directory is known and controlled, making **relative paths** preferable for portability if you move the hub.
+4. **How do I update a skill I already synced?**
+   `python3 adapters/skill_loader.py --update-skill <name>`. This removes the old block and re-injects the current version.
+
+5. **Why do Cursor symlinks use absolute paths but `external/` uses relative paths?**
+   Cursor resolves symlinks from an unpredictable working directory — absolute paths are required. The `external/` symlinks are resolved from a known location, so relative paths keep things portable.
+
+6. **How do I disable a vendor skill without deleting the symlink?**
+   Set `enabled: false` in `_registry.yaml` for that skill. Run `sh setup.sh --link` to clean up the symlink. The skill will be excluded from `--sync-all --include-external` operations.
+
+7. **What if `python3` or `pyyaml` is not installed?**
+   `setup.sh` falls back to hardcoded vendor URLs for cloning. The skill loader and validation features require `pip install pyyaml`.
+
+8. **How do I add skills to all my projects at once?**
+   For Codex: `--sync-all` handles this globally. For Gemini: `gemini skills link` registers directories machine-wide. For Claude Code and Cursor: use a shell loop to inject into each project:
+   ```bash
+   for project in ~/projects/*/; do
+       python3 adapters/skill_loader.py core/your-skill.md claude "$project"
+   done
+   ```

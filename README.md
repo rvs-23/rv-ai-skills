@@ -30,20 +30,23 @@ sh setup.sh
 
 **Prerequisite**: install [`uv`](https://docs.astral.sh/uv/). The repo uses `uv run` for all Python-based commands.
 
-`setup.sh` performs three operations in sequence:
+`setup.sh` performs four operations in sequence:
 1. Creates the directory scaffold (`core/`, `.vendor/`, `external/`).
 2. Validates all core skills and syncs them to `~/.codex/AGENTS.md` for global Codex access.
 3. Clones vendor repositories (Anthropic, Vercel, OpenAI, HuggingFace) into `.vendor/` and generates a `.vendor.lock` lockfile.
+4. Refreshes `~/.codex/skills` so Codex can discover the skills natively.
 
-### Daily Codex sync (recommended)
+For Codex on a new machine, `sh setup.sh` is the full setup. No extra install step is required.
 
-Rebuild Codex instructions and native discoverable skills whenever you change skills:
+### Daily Codex sync (optional)
+
+Use this only when you edit skills and want to refresh Codex without re-running the full setup/update flow:
 
 ```bash
-rv-skills-sync
+./scripts/rv-skills-sync
 ```
 
-`setup.sh` installs `rv-skills-sync` into `~/.local/bin`. It runs both:
+`scripts/rv-skills-sync` runs both:
 1. `~/.codex/AGENTS.md` sync (global instructions), and
 2. `~/.codex/skills` linking (native discoverable skills).
 
@@ -214,6 +217,9 @@ What instructions are you operating under for this project? List everything in C
 **Setup — global (all projects on this machine)**:
 
 ```bash
+# Full Codex setup on a fresh machine
+sh setup.sh
+
 # Core skills only (default)
 uv run adapters/skill_loader.py --sync-all
 
@@ -249,35 +255,7 @@ Your skills appear wrapped in `--- SKILL: name ---` markers. In a Codex session,
 Before we begin, summarise the key rules you have been given in your instructions.
 ```
 
-**Important**: Codex loses precision past roughly 2,000 words. If you have many skills, use `--compact` or keep some project-level only.
-
-#### Optional: make skills discoverable in Codex skill registry
-
-If you want skills to appear as native discoverable skills (instead of only AGENTS instructions), mirror them into `~/.codex/skills` as skill directories containing `SKILL.md`.
-
-```bash
-# Core skills: create wrappers as ~/.codex/skills/core-<skill>/SKILL.md
-mkdir -p ~/.codex/skills
-for f in core/*.md; do
-  [ "$(basename "$f")" = "_template.md" ] && continue
-  name="core-$(basename "$f" .md)"
-  mkdir -p "$HOME/.codex/skills/$name"
-  ln -sf "$(pwd)/$f" "$HOME/.codex/skills/$name/SKILL.md"
-done
-```
-
-For external skills, symlink each vendor skill directory (must contain `SKILL.md`):
-
-```bash
-find external -mindepth 2 -maxdepth 2 -type l | while read -r d; do
-  vendor="$(basename "$(dirname "$d")")"
-  skill="$(basename "$d")"
-  name="${vendor}-${skill}"
-  ln -sfn "$(cd "$d" && pwd -P)" "$HOME/.codex/skills/$name"
-done
-```
-
-Then restart Codex. AGENTS sync and native skill discovery can be used together.
+**Important**: Codex loses precision past roughly 2,000 words. If you have many skills, use `--compact` or keep some project-level only. `sh setup.sh` already handles both AGENTS sync and discoverable skill linking for Codex.
 
 ---
 
@@ -610,7 +588,7 @@ Commit this file. It enables reproducibility and drift detection — if `setup.s
    Set `enabled: false` in `_registry.json` for that skill. Run `sh setup.sh --link` to clean up the symlink. The skill will be excluded from `--sync-all --include-external` operations.
 
 7. **What if `uv` is not installed?**
-   Install `uv` first. The repo uses `uv run` for the skill loader and helper workflows.
+   Install `uv` first. The repo uses `uv run` for the skill loader and sync workflows.
 
 8. **How do I add skills to all my projects at once?**
    For Codex: `--sync-all` handles this globally. For Gemini: `gemini skills link` registers directories machine-wide. For Claude Code and Cursor: use a shell loop to inject into each project:

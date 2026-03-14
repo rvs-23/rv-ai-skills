@@ -18,22 +18,13 @@ SUCCEEDED=""
 FAILED=""
 LOCKFILE=".vendor.lock"
 LOADER="adapters/skill_loader.py"
+CODEX_SYNC_SCRIPT="scripts/rv-skills-sync"
 
 require_uv() {
     if ! command -v uv >/dev/null 2>&1; then
         echo "Error: uv is required but was not found on PATH."
         exit 1
     fi
-}
-
-install_codex_helper() {
-    local bin_dir="$HOME/.local/bin"
-    local target="$bin_dir/rv-skills-sync"
-    local source="$SCRIPT_DIR/scripts/rv-skills-sync"
-
-    mkdir -p "$bin_dir"
-    ln -sfn "$source" "$target"
-    echo "  Installed helper: $target -> $source"
 }
 
 # ── Vendor configuration ────────────────────────────────────────────────────
@@ -159,6 +150,9 @@ if [ "${1:-}" = "--update" ]; then
     done
     generate_lockfile
     regenerate_symlinks
+    echo ""
+    echo "-- Refreshing Codex global + discoverable skills ---------------------------"
+    bash "$CODEX_SYNC_SCRIPT"
     print_summary
     echo ""
     exit 0
@@ -191,10 +185,6 @@ echo "-- Syncing core skills to Codex global instructions ----------------------
 uv run "$LOADER" --sync-all
 
 echo ""
-echo "-- Installing Codex helper -------------------------------------------------"
-install_codex_helper
-
-echo ""
 echo "-- Syncing vendor repositories ----------------------------------------------"
 for i in "${!VENDOR_NAMES[@]}"; do
     sync_vendor "${VENDOR_NAMES[$i]}" "${VENDOR_URLS[$i]}"
@@ -202,10 +192,13 @@ done
 
 generate_lockfile
 regenerate_symlinks
+echo ""
+echo "-- Refreshing Codex global + discoverable skills ---------------------------"
+bash "$CODEX_SYNC_SCRIPT"
 print_summary
 
 echo ""
 echo "  Core skills are ready for Codex on this machine."
-echo "  Run 'rv-skills-sync' after changing skills to refresh AGENTS and ~/.codex/skills."
+echo "  Re-run './scripts/rv-skills-sync' after changing skills if you do not want a full setup/update run."
 echo "  Run 'bash setup.sh --update' anytime to pull latest vendor changes."
 echo ""
